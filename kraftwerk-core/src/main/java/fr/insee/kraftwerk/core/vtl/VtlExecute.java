@@ -108,19 +108,29 @@ public class VtlExecute {
      * @param jsonOutFile Path to write the output json file.
      * */
     public void writeJsonDataset(String bindingName, Path jsonOutFile, VtlBindings bindings) {
-    	FileUtils.createDirectoryIfNotExist(jsonOutFile.getParent());
-    	
-    	//Write file    	
         if (bindings.containsKey(bindingName)) {
-            try {
-                TextFileWriter.writeFile(jsonOutFile, mapper.writeValueAsString(bindings.getDataset(bindingName)));
-            } catch (JsonProcessingException e) {
-                log.debug(String.format("Unable to serialize dataset stored under name '%s'.", bindingName), e);
-            }
+        	Dataset dataset = bindings.getDataset(bindingName);
+            writeJsonDataset(jsonOutFile, dataset);
         } else {
             log.debug(String.format("No dataset under name '%s' in the bindings.", bindingName));
         }
 
+    }
+    
+    /**
+     * Write the dataset registered under given name as a json file (Trevas module format).
+     * @param bindingName Name of a dataset stored in the bindings.
+     * @param jsonOutFile Path to write the output json file.
+     * */
+    public void writeJsonDataset(Path jsonOutFile, Dataset dataset) {
+    	FileUtils.createDirectoryIfNotExist(jsonOutFile.getParent());
+    	
+    	//Write file    	
+        try {
+            TextFileWriter.writeFile(jsonOutFile, mapper.writeValueAsString(dataset));
+        } catch (JsonProcessingException e) {
+            log.debug(String.format("Unable to serialize dataset  '%s'.", dataset), e);
+        }
     }
 
     /**

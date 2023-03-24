@@ -76,16 +76,16 @@ public class VtlBindings extends SimpleBindings {
         try {
             if (measureClass == Class.forName("java.lang.Long")){
                 type="integer";
-            };
+            }
             if (measureClass == Class.forName("java.lang.Double")){
                 type="number";
-            };
+            }
             if (measureClass == Class.forName("java.lang.Boolean")){
                 type="boolean";
-            };
+            }
             if (measureClass == Class.forName("java.lang.String")){
                 type="string";
-            };
+            }
             return type;
         } catch (ClassNotFoundException e) {
             log.error("Class not recognized");

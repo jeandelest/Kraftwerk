@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -15,9 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.opencsv.ICSVWriter;
+import com.opencsv.exceptions.CsvException;
 import com.opencsv.exceptions.CsvValidationException;
 
+import fr.insee.kraftwerk.core.outputs.OutputFiles;
 import fr.insee.kraftwerk.core.utils.CsvUtils;
+import fr.insee.kraftwerk.core.vtl.ErrorVtlTransformation;
+import fr.insee.kraftwerk.core.vtl.VtlBindings;
+import fr.insee.kraftwerk.core.vtl.VtlExecute;
+import fr.insee.vtl.model.Dataset;
+import fr.insee.vtl.model.InMemoryDataset;
+import fr.insee.vtl.model.Structured.Component;
+import fr.insee.vtl.model.Structured.DataPoint;
+import fr.insee.vtl.model.Structured.DataStructure;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,66 +49,152 @@ public class MatrixService {
 	private static final String MATRIX_NAME_EXAMPLE = "PCS2020";
 
 	private static final String CSV = ".csv";
+	private static final String JSON = ".json";
 	
 	@Value("${fr.insee.postcollecte.files}")
 	private String defaultDirectory;
 	
 	private String matrixDirectory;
 	
+	VtlExecute vtlExecute;
 
 	@PostConstruct
 	public void initializeWithProperties() {
 		matrixDirectory = defaultDirectory.concat("/matrix");
+		vtlExecute = new VtlExecute();
 	}
 
 
 	@PutMapping(value = "/flat")
 	@Operation(operationId = "flatMatrix", summary = "${summary.flatMatrix}", description = "${description.flatMatrix}")
-	public ResponseEntity<String> buildVtlBindings(
+	public ResponseEntity<String> flatMatrix(
 			@Parameter(description = "${param.matrixName}", required = true, example = MATRIX_NAME_EXAMPLE) @RequestBody String matrixNameParam
-			) throws CsvValidationException, IOException   {
+			) throws IOException, CsvException   {
 		//Read data files
 		Path matrixPath = Path.of(matrixDirectory, matrixNameParam+CSV);
 		Path flatMatrixPath = Path.of(matrixDirectory, "flat"+matrixNameParam+CSV);
 
 		
 		//Process
-		List<String[]> flatMatrix = readLineByLine(matrixPath);
-		writeAllLines(flatMatrix, flatMatrixPath);
+		List<String[]> flatMatrix = getFlatCsv(matrixPath);
+		writeAllLinesInCsv(flatMatrix, flatMatrixPath);
+		log.info("Start to create dataset");
+		Dataset matrixDataset = getDatasetFromCsv(flatMatrixPath,2);
+		log.info("End to create dataset {}", matrixDataset);
+		Path matrixDatasetPath = Path.of(matrixDirectory, "flat"+matrixNameParam+JSON);
+		log.info("Write dataset in", matrixDatasetPath);
+
+		vtlExecute.writeJsonDataset(matrixDatasetPath, matrixDataset);
+		log.info("End to write dataset ");
+		
+		VtlBindings vtlBindings = new VtlBindings();
+		vtlExecute.putVtlDataset(matrixDatasetPath.toString(), matrixNameParam, vtlBindings);
+		List<ErrorVtlTransformation> errors = new ArrayList<>();
+		vtlExecute.evalVtlScript("", vtlBindings, errors );
+		errors.forEach(e -> log.error(e.toString()));
+		OutputFiles of = new OutputFiles(Path.of(matrixDirectory), vtlBindings, matrixNameParam);
+		of.writeOutputCsvTables();
 		return ResponseEntity.ok(matrixNameParam);
 
 
 	}
 	
-	public List<String[]> readLineByLine(Path filePath) throws IOException, CsvValidationException   {
+	@PutMapping(value = "/2")
+	@Operation(operationId = "2", summary = "${summary.2}", description = "${description.2}")
+	public ResponseEntity<String> methodToRename(
+			@Parameter(description = "${param.matrixName}", required = true, example = MATRIX_NAME_EXAMPLE) @RequestBody String matrixNameParam
+			)    {
+		//Read data files
+		Path matrixDatasetPath = Path.of(matrixDirectory, "flat"+matrixNameParam+JSON);
+		
+		//Process
+		VtlBindings vtlBindings = new VtlBindings();
+		vtlExecute.putVtlDataset(matrixDatasetPath.toString(), matrixNameParam, vtlBindings);
+		log.debug("Size of dataset before VTL script: {}", vtlBindings.getDataset(matrixNameParam).getDataPoints().size());
+		List<ErrorVtlTransformation> errors = new ArrayList<>();
+		vtlExecute.evalVtlScript("", vtlBindings, errors );
+		errors.forEach(e -> log.error(e.toString()));
+		log.debug("Size of dataset after VTL script: {}", vtlBindings.getDataset(matrixNameParam).getDataPoints().size());
+		OutputFiles of = new OutputFiles(Path.of(matrixDirectory), vtlBindings, matrixNameParam);
+		of.writeOutputCsvTables();
+		return ResponseEntity.ok(matrixNameParam);
+
+
+	}
+	
+	private List<String[]> getFlatCsv(Path filePath) throws IOException, CsvValidationException   {
 	    List<String[]> list = new ArrayList<>();
+	    Map<String[], String> map = new HashMap<>();
 	    String[] variables = null;
 	        try (CSVReader csvReader = CsvUtils.getReader(filePath)) {
 	            String[] line;
 	            while ((line = csvReader.readNext()) != null) {
 	            	if (csvReader.getLinesRead() ==1) { //HEADER
-	            		log.info(line[0]);
 	            		variables = Arrays.copyOfRange(line, 1, line.length);
 	            		String[] newHeaders = {"libelle","statut","code"};
 	            		list.add(newHeaders);
-	            	}else {
-	            		if (variables != null) {
-	            		for (int i=0;i<variables.length;i++) {
-							String[] newLine = {line[0],variables[i],line[i+1]};
-							list.add(newLine);
+	            	}else if (variables != null) {
+		            	for (int i=0;i<variables.length;i++) {
+							String[] key = {line[0],variables[i]};
+							map.putIfAbsent(key, line[i+1]);
 						}
-	            		}
 	            	}
 	            }
-	        
 	    }
+	    map.forEach((k,v)-> {
+	    	String[] element = {k[0],k[1],v};
+	    	list.add(element);
+	    });
 	    return list;
 	}
 
-	public void writeAllLines(List<String[]> lines, Path path) throws IOException {
-	    try (CSVWriter writer = new CSVWriter(new FileWriter(path.toString()))) {
+	private void writeAllLinesInCsv(List<String[]> lines, Path path) throws IOException {
+	    try (CSVWriter writer = new CSVWriter(new FileWriter(path.toString()),';',ICSVWriter.NO_QUOTE_CHARACTER,
+                ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
+                ICSVWriter.DEFAULT_LINE_END)) {
 	        writer.writeAll(lines);
 	    }
+	}
+	
+	private Dataset getDatasetFromCsv(Path path, int nbIdentifier) throws IOException, CsvException {
+		//Read CSV
+		List<String[]> lines; 
+		try (CSVReader csvReader = CsvUtils.getReader(path)) {
+			 lines =  csvReader.readAll();
+		 }
+		 
+		 //Components from headers
+		 String[] headers = lines.get(0);
+		 List<Component> components = new ArrayList<>();
+		 for (int nbCol=0;nbCol<nbIdentifier;nbCol++) {
+			 Component component = new Component(headers[nbCol],String.class,Dataset.Role.IDENTIFIER);
+			 components.add(component);
+		 }
+		 for (int nbCol=nbIdentifier;nbCol<headers.length;nbCol++) {
+			 Component component = new Component(headers[nbCol],String.class,Dataset.Role.ATTRIBUTE);
+			 components.add(component);
+		 }
+
+		 //DataStructure
+		 DataStructure ds = new DataStructure(components);
+		 
+		 //DataPoints from other lines
+		 List<DataPoint> dataPoints = new ArrayList<>();
+		 
+		 for (int nbLine=1;nbLine<lines.size();nbLine++) {
+			 String[] currentLine = lines.get(nbLine);
+			 Map<String, Object> values = new HashMap<>();
+
+			 for (int i=0;i<currentLine.length;i++) {
+				values.putIfAbsent(headers[i], currentLine[i]);
+			 }
+			 DataPoint dp = new DataPoint(ds, values);
+			 dataPoints.add(dp);
+		 }
+		 
+		 //InMemoryDataset
+		return new InMemoryDataset(dataPoints, ds);
+		
 	}
 
 }

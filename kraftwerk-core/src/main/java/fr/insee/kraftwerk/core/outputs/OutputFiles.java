@@ -50,13 +50,21 @@ public class OutputFiles {
 		//
 		createOutputFolder();
 	}
+	
+	public OutputFiles(Path outDirectory, VtlBindings vtlBindings, String datasetToCreate) {
+		this.vtlBindings = vtlBindings;
+		this.datasetToCreate.add(datasetToCreate);
+		
+		outputFolder = outDirectory;
+		createOutputFolder();
+	}
 
 	/** Create output folder if doesn't exist. */
 	private void createOutputFolder() {
 		FileUtils.createDirectoryIfNotExist(outputFolder);
 	}
 
-	/** See getOutputDatasetNames doc. */
+
 	private void setOutputDatasetNames(List<String> modes, String multimodeDatasetNames) {
 		Set<String> unwantedDatasets = new HashSet<>(modes);
 		for (String modeName : modes) { // NOTE: deprecated code since clean up processing class
