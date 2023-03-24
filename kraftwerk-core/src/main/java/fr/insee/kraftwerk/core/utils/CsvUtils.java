@@ -5,6 +5,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
@@ -12,8 +16,14 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.CSVWriter;
 import com.opencsv.ICSVWriter;
+import com.opencsv.exceptions.CsvException;
 
 import fr.insee.kraftwerk.core.Constants;
+import fr.insee.vtl.model.Dataset;
+import fr.insee.vtl.model.InMemoryDataset;
+import fr.insee.vtl.model.Structured.Component;
+import fr.insee.vtl.model.Structured.DataPoint;
+import fr.insee.vtl.model.Structured.DataStructure;
 
 /** Encapsulate org.opencsv features that we use in Kraftwerk. */
 public class CsvUtils {
@@ -50,4 +60,45 @@ public class CsvUtils {
                 ICSVWriter.DEFAULT_ESCAPE_CHARACTER,
                 ICSVWriter.DEFAULT_LINE_END);
     }
+    
+	public static Dataset getDatasetFromCsv(Path path, int nbIdentifier) throws IOException, CsvException {
+		//Read CSV
+		List<String[]> lines; 
+		try (CSVReader csvReader = CsvUtils.getReader(path)) {
+			 lines =  csvReader.readAll();
+		 }
+		 
+		 //Components from headers
+		 String[] headers = lines.get(0);
+		 List<Component> components = new ArrayList<>();
+		 for (int nbCol=0;nbCol<nbIdentifier;nbCol++) {
+			 Component component = new Component(headers[nbCol],String.class,Dataset.Role.IDENTIFIER);
+			 components.add(component);
+		 }
+		 for (int nbCol=nbIdentifier;nbCol<headers.length;nbCol++) {
+			 Component component = new Component(headers[nbCol],String.class,Dataset.Role.ATTRIBUTE);
+			 components.add(component);
+		 }
+
+		 //DataStructure
+		 DataStructure ds = new DataStructure(components);
+		 
+		 //DataPoints from other lines
+		 List<DataPoint> dataPoints = new ArrayList<>();
+		 
+		 for (int nbLine=1;nbLine<lines.size();nbLine++) {
+			 String[] currentLine = lines.get(nbLine);
+			 Map<String, Object> values = new HashMap<>();
+
+			 for (int i=0;i<currentLine.length;i++) {
+				values.putIfAbsent(headers[i], currentLine[i]);
+			 }
+			 DataPoint dp = new DataPoint(ds, values);
+			 dataPoints.add(dp);
+		 }
+		 
+		 //InMemoryDataset
+		return new InMemoryDataset(dataPoints, ds);
+		
+	}
 }

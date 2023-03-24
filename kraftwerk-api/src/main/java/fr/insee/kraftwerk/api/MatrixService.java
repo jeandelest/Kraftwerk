@@ -27,10 +27,6 @@ import fr.insee.kraftwerk.core.vtl.ErrorVtlTransformation;
 import fr.insee.kraftwerk.core.vtl.VtlBindings;
 import fr.insee.kraftwerk.core.vtl.VtlExecute;
 import fr.insee.vtl.model.Dataset;
-import fr.insee.vtl.model.InMemoryDataset;
-import fr.insee.vtl.model.Structured.Component;
-import fr.insee.vtl.model.Structured.DataPoint;
-import fr.insee.vtl.model.Structured.DataStructure;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -79,7 +75,7 @@ public class MatrixService {
 		List<String[]> flatMatrix = getFlatCsv(matrixPath);
 		writeAllLinesInCsv(flatMatrix, flatMatrixPath);
 		log.info("Start to create dataset");
-		Dataset matrixDataset = getDatasetFromCsv(flatMatrixPath,2);
+		Dataset matrixDataset = CsvUtils.getDatasetFromCsv(flatMatrixPath,2);
 		log.info("End to create dataset {}", matrixDataset);
 		Path matrixDatasetPath = Path.of(matrixDirectory, "flat"+matrixNameParam+JSON);
 		log.info("Write dataset in", matrixDatasetPath);
@@ -156,45 +152,6 @@ public class MatrixService {
 	    }
 	}
 	
-	private Dataset getDatasetFromCsv(Path path, int nbIdentifier) throws IOException, CsvException {
-		//Read CSV
-		List<String[]> lines; 
-		try (CSVReader csvReader = CsvUtils.getReader(path)) {
-			 lines =  csvReader.readAll();
-		 }
-		 
-		 //Components from headers
-		 String[] headers = lines.get(0);
-		 List<Component> components = new ArrayList<>();
-		 for (int nbCol=0;nbCol<nbIdentifier;nbCol++) {
-			 Component component = new Component(headers[nbCol],String.class,Dataset.Role.IDENTIFIER);
-			 components.add(component);
-		 }
-		 for (int nbCol=nbIdentifier;nbCol<headers.length;nbCol++) {
-			 Component component = new Component(headers[nbCol],String.class,Dataset.Role.ATTRIBUTE);
-			 components.add(component);
-		 }
 
-		 //DataStructure
-		 DataStructure ds = new DataStructure(components);
-		 
-		 //DataPoints from other lines
-		 List<DataPoint> dataPoints = new ArrayList<>();
-		 
-		 for (int nbLine=1;nbLine<lines.size();nbLine++) {
-			 String[] currentLine = lines.get(nbLine);
-			 Map<String, Object> values = new HashMap<>();
-
-			 for (int i=0;i<currentLine.length;i++) {
-				values.putIfAbsent(headers[i], currentLine[i]);
-			 }
-			 DataPoint dp = new DataPoint(ds, values);
-			 dataPoints.add(dp);
-		 }
-		 
-		 //InMemoryDataset
-		return new InMemoryDataset(dataPoints, ds);
-		
-	}
 
 }
