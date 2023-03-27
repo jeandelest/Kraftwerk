@@ -47,7 +47,6 @@ public class OutputFiles {
 		setOutputDatasetNames(modes, multimodeDatasetNames);
 		//
 		outputFolder = outDirectory;
-		//
 		createOutputFolder();
 	}
 	
@@ -58,6 +57,15 @@ public class OutputFiles {
 		outputFolder = outDirectory;
 		createOutputFolder();
 	}
+	
+	public OutputFiles(Path outDirectory, VtlBindings vtlBindings, Set<String> datasetToCreate) {
+		this.vtlBindings = vtlBindings;
+		this.datasetToCreate.addAll(datasetToCreate);
+		
+		outputFolder = outDirectory;
+		createOutputFolder();
+	}
+
 
 	/** Create output folder if doesn't exist. */
 	private void createOutputFolder() {

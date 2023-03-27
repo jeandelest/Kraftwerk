@@ -6,13 +6,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.opencsv.CSVReader;
@@ -23,6 +26,7 @@ import com.opencsv.exceptions.CsvValidationException;
 
 import fr.insee.kraftwerk.core.outputs.OutputFiles;
 import fr.insee.kraftwerk.core.utils.CsvUtils;
+import fr.insee.kraftwerk.core.utils.TextFileReader;
 import fr.insee.kraftwerk.core.vtl.ErrorVtlTransformation;
 import fr.insee.kraftwerk.core.vtl.VtlBindings;
 import fr.insee.kraftwerk.core.vtl.VtlExecute;
@@ -98,20 +102,34 @@ public class MatrixService {
 	@PutMapping(value = "/2")
 	@Operation(operationId = "2", summary = "${summary.2}", description = "${description.2}")
 	public ResponseEntity<String> methodToRename(
-			@Parameter(description = "${param.matrixName}", required = true, example = MATRIX_NAME_EXAMPLE) @RequestBody String matrixNameParam
-			)    {
+			@Parameter(description = "${param.matrixName}", required = true, example = MATRIX_NAME_EXAMPLE) @RequestParam String matrixNameParam,
+			@Parameter(description = "${param.dataName}", required = true, example = "") @RequestParam String dataNameParam,
+			@RequestParam String vtlScript
+
+			) throws IOException, CsvException    {
 		//Read data files
 		Path matrixDatasetPath = Path.of(matrixDirectory, "flat"+matrixNameParam+JSON);
+		Path dataDatasetPath = Path.of(matrixDirectory, dataNameParam+JSON);
+		Path vtlPath = Path.of(matrixDirectory, vtlScript);
 		
+		String vtl = TextFileReader.readFromPath(vtlPath);
+
 		//Process
 		VtlBindings vtlBindings = new VtlBindings();
 		vtlExecute.putVtlDataset(matrixDatasetPath.toString(), matrixNameParam, vtlBindings);
-		log.debug("Size of dataset before VTL script: {}", vtlBindings.getDataset(matrixNameParam).getDataPoints().size());
+		vtlExecute.putVtlDataset(dataDatasetPath.toString(), dataNameParam, vtlBindings);
+
 		List<ErrorVtlTransformation> errors = new ArrayList<>();
-		vtlExecute.evalVtlScript("", vtlBindings, errors );
+		vtlExecute.evalVtlScript(vtl, vtlBindings, errors );
 		errors.forEach(e -> log.error(e.toString()));
-		log.debug("Size of dataset after VTL script: {}", vtlBindings.getDataset(matrixNameParam).getDataPoints().size());
-		OutputFiles of = new OutputFiles(Path.of(matrixDirectory), vtlBindings, matrixNameParam);
+
+		Set<String> datasets = new HashSet<>();
+		datasets.add(matrixNameParam);
+		datasets.add(dataNameParam);
+		datasets.add("OUT");
+
+
+		OutputFiles of = new OutputFiles(Path.of(matrixDirectory), vtlBindings, datasets);
 		of.writeOutputCsvTables();
 		return ResponseEntity.ok(matrixNameParam);
 

@@ -33,7 +33,7 @@ public class TextFileReader {
         }
     }
 
-    public static String readTextContent(Reader fileReader) throws IOException {
+    private static String readTextContent(Reader fileReader) throws IOException {
         BufferedReader br = new BufferedReader(fileReader);
         StringBuilder content = new StringBuilder();
         String line;
