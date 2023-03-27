@@ -127,6 +127,9 @@ public class MatrixService {
 		datasets.add(matrixNameParam);
 		datasets.add(dataNameParam);
 		datasets.add("OUT");
+		datasets.add("DATAPRINT");
+		datasets.add("PCS2020PRINT");
+
 
 
 		OutputFiles of = new OutputFiles(Path.of(matrixDirectory), vtlBindings, datasets);
