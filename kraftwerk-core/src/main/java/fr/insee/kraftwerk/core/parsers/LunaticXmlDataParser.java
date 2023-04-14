@@ -24,14 +24,16 @@ import nu.xom.Elements;
 @Slf4j
 public class LunaticXmlDataParser extends DataParser {
 
-	/** Words used to filter VTL expressions in "calculated" elements.
+	/**
+	 * Words used to filter VTL expressions in "calculated" elements.
 	 */
-	private static final String[] forbiddenWords = {"cast", "isnull", "if "};
+	private static final String[] forbiddenWords = { "cast", "isnull", "if " };
 
 	/**
 	 * Parser constructor.
-	 * @param data The SurveyRawData to be filled by the parseSurveyData method.
-	 *             The variables must have been previously set.
+	 * 
+	 * @param data The SurveyRawData to be filled by the parseSurveyData method. The
+	 *             variables must have been previously set.
 	 */
 	public LunaticXmlDataParser(SurveyRawData data) {
 		super(data);
@@ -39,6 +41,7 @@ public class LunaticXmlDataParser extends DataParser {
 
 	/**
 	 * Parse the XML file from the given path.
+	 * 
 	 * @param filePath Path to the XML file.
 	 * @return The parsed document.
 	 */
@@ -52,8 +55,9 @@ public class LunaticXmlDataParser extends DataParser {
 	}
 
 	/**
-	 * Parse a Lunatic xml data file.
-	 * Only "COLLECTED" and "EXTERNAL" variables are read.
+	 * Parse a Lunatic xml data file. Only "COLLECTED" and "EXTERNAL" variables are
+	 * read.
+	 * 
 	 * @param filePath Path to a Lunatic xml data file.
 	 */
 	@Override
@@ -61,7 +65,7 @@ public class LunaticXmlDataParser extends DataParser {
 
 		Document document = readXmlFile(filePath);
 		log.debug("Begin to parse {} ", filePath);
-		if (document!=null) {
+		if (document != null) {
 			Elements questionnaireNodeList = document.getRootElement().getFirstChildElement("SurveyUnits")
 					.getChildElements("SurveyUnit");
 
@@ -83,15 +87,14 @@ public class LunaticXmlDataParser extends DataParser {
 
 				data.addQuestionnaire(questionnaireData);
 			}
-			log.info("Successfully parsed Lunatic answers file: {}",filePath );
+			log.info("Successfully parsed Lunatic XML answers file: {}", filePath);
 		}
 	}
 
 	/**
 	 * Read data in the COLLECTED elements.
 	 */
-	private void readCollected(Element questionnaireNode, QuestionnaireData questionnaireData,
-											VariablesMap variables) {
+	private void readCollected(Element questionnaireNode, QuestionnaireData questionnaireData, VariablesMap variables) {
 
 		// Xml collected variables nodes
 		Elements collectedVariablesNodes = questionnaireNode.getFirstChildElement("Data")
@@ -105,101 +108,72 @@ public class LunaticXmlDataParser extends DataParser {
 			// Variable name
 			String variableName = variableNode.getLocalName();
 
-			//
+			// Get values (one in Root or many in a subgroup)
 			Element collectedNode = variableNode.getFirstChildElement(Constants.COLLECTED);
-
-			// Root variables
-			if (collectedNode.getAttribute("type") != null) {
-				if(! collectedNode.getAttribute("type").getValue().equals("null")) {
+			if (variables.hasVariable(variableName)) {//Read only variables described in metadata
+				// Root variables
+				if (nodeHasAType(collectedNode)) {
 					String value = variableNode.getFirstChildElement(Constants.COLLECTED).getValue();
-					if ((variables.getVariable(variableName) != null) && value.length()>variables.getVariable(variableName).getMaxLengthData()){
-						variables.getVariable(variableName).setMaxLengthData(value.length());
-					}
+					setMaxLength(variables, variableName, value);
 					answers.putValue(variableName, value);
 				}
-			}
 
-			// Group variables // TODO : recursion etc.
-			else {
-				Elements valueNodes = collectedNode.getChildElements();
-				if(variables.hasVariable(variableName)) {
+				// Group variables // TODO : recursion etc.
+				else {
+					// Get the selected subgroup
 					String groupName = variables.getVariable(variableName).getGroupName();
 					GroupData groupData = answers.getSubGroup(groupName);
-					for (int j = 0; j < valueNodes.size(); j++) {
-						Element valueNode = valueNodes.get(j);
-						if(! valueNode.getAttribute("type").getValue().equals("null")) {
-							String value = valueNodes.get(j).getValue();
-							if ((variables.getVariable(variableName) != null) && value.length()>variables.getVariable(variableName).getMaxLengthData()){
-								variables.getVariable(variableName).setMaxLengthData(value.length());
-							}
-							groupData.putValue(value, variableName, j);
-						}
-					}
+					// Add all children values to the variable in the subgroup
+					addAllChildrenValues(variableName, collectedNode.getChildElements(), groupData, variables);
 				}
 			}
 		}
 	}
 
 	/**
-	 * Read data in the EXTERNAL elements.
-	 * "External" variables are always in the root group.
+	 * Read data in the EXTERNAL elements. "External" variables are always in the
+	 * root group.
 	 */
-	private void readExternal(Element questionnaireNode, QuestionnaireData questionnaireData,
-							   VariablesMap variables) {
+	private void readExternal(Element questionnaireNode, QuestionnaireData questionnaireData, VariablesMap variables) {
 
-		Element externalNode = questionnaireNode.getFirstChildElement("Data")
-				.getFirstChildElement("EXTERNAL");
+		Element externalNode = questionnaireNode.getFirstChildElement("Data").getFirstChildElement("EXTERNAL");
 
 		if (externalNode != null) {
 
 			Elements externalVariableNodes = externalNode.getChildElements();
 
 			for (Element externalVariableNode : externalVariableNodes) {
-				if (externalVariableNode.getAttribute("type") != null 
-					&& !externalVariableNode.getAttribute("type").getValue().equals("null")) {
-						String variableName = externalVariableNode.getLocalName();
-						String value = externalVariableNode.getValue();
-						questionnaireData.putValue(value, variableName);
-						if (!variables.hasVariable(variableName)) {
-							variables.putVariable(
-									new Variable(variableName, variables.getRootGroup(), VariableType.STRING));
-							log.warn(String.format(
-									"EXTERNAL variable \"%s\" was not found in DDI and has been added, with type STRING.",
-									variableName));
-						}
+				String variableName = externalVariableNode.getLocalName();
+
+				// Root variables
+				if (nodeHasAType(externalVariableNode)) {
+					String value = externalVariableNode.getValue();
+					questionnaireData.putValue(value, variableName);
+					addExternalVariableToVariablesMapIfNot(variables, variableName);
 				}
-				// Group variables 
-				else {
+				// Group variables
+				else if (variables.hasVariable(variableName)) {
 					Elements valueNodes = externalVariableNode.getChildElements();
-					String variableName = externalVariableNode.getLocalName();
-					if(variables.hasVariable(variableName)) {
-						String groupName = variables.getVariable(variableName).getGroupName();
-						GroupData groupData = questionnaireData.getAnswers().getSubGroup(groupName);
-						for (int j = 0; j < valueNodes.size(); j++) {
-							Element valueNode = valueNodes.get(j);
-							if(! valueNode.getAttribute("type").getValue().equals("null")) {
-								groupData.putValue(valueNode.getValue(), variableName, j);
-							}
-						}
-					}
+					String groupName = variables.getVariable(variableName).getGroupName();
+					GroupData groupData = questionnaireData.getAnswers().getSubGroup(groupName);
+					addAllChildrenValues(variableName, valueNodes, groupData, variables);
 				}
+
 			}
 		}
 	}
 
 	/**
-	 * Read data in the CALCULATED elements.
-	 * Values that are a vtl expression are filtered.
-	 * To bo be removed when all questionnaires will use Lunatic V2.
+	 * Read data in the CALCULATED elements. Values that are a vtl expression are
+	 * filtered. To bo be removed when all questionnaires will use Lunatic V2.
 	 */
 	private void readCalculated(Element questionnaireNode, QuestionnaireData questionnaireData,
-											 VariablesMap variables) {
+			VariablesMap variables) {
 
 		// Xml collected variables nodes
-		Element calculatedNode = questionnaireNode.getFirstChildElement("Data")
-				.getFirstChildElement("CALCULATED");
+		Element calculatedNode = questionnaireNode.getFirstChildElement("Data").getFirstChildElement("CALCULATED");
 
-		if(calculatedNode != null) {
+		if (calculatedNode != null) {
 			Elements calculatedVariablesNodes = calculatedNode.getChildElements();
 
 			// Data object
@@ -211,13 +185,12 @@ public class LunaticXmlDataParser extends DataParser {
 				String variableName = variableNode.getLocalName();
 
 				// Root variables
-				if (variableNode.getAttribute("type") != null) {
-					if (!variableNode.getAttribute("type").getValue().equals("null")) {
-						String value = variableNode.getValue();
-						if(isNotVtlExpression(value)) {
-							answers.putValue(variableName, value);
-						}
+				if (nodeHasAType(variableNode)) {
+					String value = variableNode.getValue();
+					if (isNotVtlExpression(value)) {
+						answers.putValue(variableName, value);
 					}
+
 				}
 
 				// Group variables
@@ -226,7 +199,7 @@ public class LunaticXmlDataParser extends DataParser {
 					String groupName;
 
 					if (variables.getVariable(variableName) != null) {
-					groupName = variables.getVariable(variableName).getGroupName();
+						groupName = variables.getVariable(variableName).getGroupName();
 					} else {
 						groupName = Constants.ROOT_GROUP_NAME;
 					}
@@ -235,7 +208,7 @@ public class LunaticXmlDataParser extends DataParser {
 					GroupData groupData = answers.getSubGroup(groupName);
 					for (int j = 0; j < valueNodes.size(); j++) {
 						String value = valueNodes.get(j).getValue();
-						if(isNotVtlExpression(value)) {
+						if (isNotVtlExpression(value)) {
 							groupData.putValue(value, variableName, j);
 						}
 					}
@@ -244,13 +217,40 @@ public class LunaticXmlDataParser extends DataParser {
 		}
 	}
 
+	private void addAllChildrenValues(String variableName, Elements valueNodes, GroupData groupData,
+			VariablesMap variables) {
+		for (int j = 0; j < valueNodes.size(); j++) {
+			Element valueNode = valueNodes.get(j);
+			if (nodeHasAType(valueNode)) {
+				String value = valueNode.getValue();
+				setMaxLength(variables, variableName, value);
+				groupData.putValue(value, variableName, j);
+			}
+		}
+	}
+
+	private boolean nodeHasAType(Element valueNode) {
+		return valueNode.getAttribute("type") != null && !valueNode.getAttribute("type").getValue().equals("null");
+	}
+
+	private void addExternalVariableToVariablesMapIfNot(VariablesMap variables, String variableName) {
+		if (!variables.hasVariable(variableName)) {
+			variables.putVariable(new Variable(variableName, variables.getRootGroup(), VariableType.STRING));
+			log.warn(
+					String.format("EXTERNAL variable \"%s\" was not found in DDI and has been added, with type STRING.",
+							variableName));
+		}
+	}
+
 	/**
-	 * Check if the given value is a VTL expression using the 'forbiddenWords' attribute.
+	 * Check if the given value is a VTL expression using the 'forbiddenWords'
+	 * attribute.
+	 * 
 	 * @see fr.insee.kraftwerk.core.metadata.LunaticReader
 	 * @see fr.insee.kraftwerk.core.dataprocessing.CalculatedProcessing
 	 */
 	private static boolean isNotVtlExpression(String value) {
 		return Arrays.stream(forbiddenWords).noneMatch(value::contains);
 	}
-	
+
 }

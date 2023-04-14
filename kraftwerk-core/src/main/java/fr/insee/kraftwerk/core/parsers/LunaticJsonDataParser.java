@@ -2,10 +2,13 @@ package fr.insee.kraftwerk.core.parsers;
 
 import java.nio.file.Path;
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import fr.insee.kraftwerk.core.Constants;
 import fr.insee.kraftwerk.core.exceptions.NullException;
+import fr.insee.kraftwerk.core.metadata.VariablesMap;
+import fr.insee.kraftwerk.core.rawdata.GroupData;
 import fr.insee.kraftwerk.core.rawdata.GroupInstance;
 import fr.insee.kraftwerk.core.rawdata.QuestionnaireData;
 import fr.insee.kraftwerk.core.rawdata.SurveyRawData;
@@ -16,8 +19,9 @@ public class LunaticJsonDataParser extends DataParser {
 
 	/**
 	 * Parser constructor.
-	 * @param data The SurveyRawData to be filled by the parseSurveyData method.
-	 *             The variables must have been previously set.
+	 * 
+	 * @param data The SurveyRawData to be filled by the parseSurveyData method. The
+	 *             variables must have been previously set.
 	 */
 	public LunaticJsonDataParser(SurveyRawData data) {
 		super(data);
@@ -27,52 +31,83 @@ public class LunaticJsonDataParser extends DataParser {
 	void parseDataFile(Path filePath) throws NullException {
 		log.warn("Lunatic data parser being implemented!");
 
-		//
+		// Read data in json file
 		JSONObject jsonObject = null;
 		try {
 			jsonObject = (JSONObject) Constants.readJsonSimple(filePath);
 		} catch (Exception e) {
-			throw new NullException("Can't read JSON file - "+e.getClass()+" "+ e.getMessage());
+			throw new NullException("Can't read JSON file - " + e.getClass() + " " + e.getMessage());
 		}
-		//JSONObject stateData = (JSONObject) jsonObject.get("stateData");
 		JSONObject jsonData = (JSONObject) jsonObject.get("data");
-		String identifier = (String) jsonObject.get("id");
 
+		// Init the questionnaire data object
 		QuestionnaireData questionnaireData = new QuestionnaireData();
 
 		// Root identifier
-		questionnaireData.setIdentifier(identifier);
+		questionnaireData.setIdentifier((String) jsonObject.get("id"));
 
 		// Survey answers
+		readCollected(jsonData, questionnaireData, data.getVariablesMap());
+		readExternal(jsonData,  questionnaireData, data.getVariablesMap());
+		readCalculated();
+
+		data.addQuestionnaire(questionnaireData);
+
+		log.info("Successfully parsed Lunatic JSON answers file: {}", filePath);
+
+	}
+
+
+	private void readCollected(JSONObject jsonData, QuestionnaireData questionnaireData, VariablesMap variables) {
+		readVariables(Constants.COLLECTED,jsonData, questionnaireData, data.getVariablesMap());
+	}
+	
+
+	private void readExternal(JSONObject jsonData, QuestionnaireData questionnaireData, VariablesMap variablesMap) {
+		readVariables(Constants.EXTERNAL,jsonData, questionnaireData, data.getVariablesMap());
+		
+	}
+	
+	private void readVariables(String type, JSONObject jsonData, QuestionnaireData questionnaireData, VariablesMap variables) {
+		JSONObject collectedVariables = (JSONObject) jsonData.get(type);
+
+		// Data object
 		GroupInstance answers = questionnaireData.getAnswers();
 
-		// Now we get each variable calculated during the survey
-		// TODO
-
-		// Now we get each variable collected during the survey
-		JSONObject collected_variables = (JSONObject) jsonData.get("COLLECTED");
-
-		for (Object variable : collected_variables.keySet()) {
+		for (Object variable : collectedVariables.keySet()) {
 			String variableName = (String) variable;
-			JSONObject variable_data = (JSONObject) collected_variables.get(variableName);
-			if (data.getVariablesMap().hasVariable(variableName)) {
-				String value = "";
-				if (variable_data.get("COLLECTED") != null){
-					value = (String) variable_data.get("COLLECTED").toString();
-				} 
-				answers.putValue(variableName, value);
+			JSONObject variableData = (JSONObject) collectedVariables.get(variableName);
+			if (variables.hasVariable(variableName)) {// Read only variables described in metadata
+				if (variableData.get(type) != null) {
+					Object value = variableData.get(type);
+					if (value instanceof String || value instanceof Number || value instanceof Boolean) { // Root
+																											// Variables
+						setMaxLength(variables, variableName, value.toString());
+						answers.putValue(variableName, value.toString());
+					} else if (value instanceof JSONArray valueArray) {// Group variables
+						// Get the selected subgroup
+						String groupName = variables.getVariable(variableName).getGroupName();
+						GroupData groupData = answers.getSubGroup(groupName);
+						// Add all children values to the variable in the subgroup
+						for (int j = 0; j < valueArray.size(); j++) {
+							String currentVal = valueArray.get(j).toString();
+							setMaxLength(variables, variableName, currentVal);
+							groupData.putValue(currentVal, variableName, j);
+						}
+					} // else JSONObject ?
+
+				}
 			} else {
-				//TODO fix log, lots of useless lines
 				log.warn(String.format("WARNING: Variable %s not expected!", variableName));
 			}
-			
-		}
 
-		// Now we get each variable external to the survey
-		// TODO
-		
-		//
-		data.addQuestionnaire(questionnaireData);
+		}
+	}
+
+
+	private void readCalculated() {
+		// TODO Auto-generated method stub
+
 	}
 
 }

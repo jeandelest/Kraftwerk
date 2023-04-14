@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import fr.insee.kraftwerk.core.exceptions.NullException;
+import fr.insee.kraftwerk.core.metadata.VariablesMap;
 import fr.insee.kraftwerk.core.rawdata.SurveyRawData;
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,5 +70,13 @@ public abstract class DataParser {
 	 * @throws NullException 
 	 */
 	abstract void parseDataFile(Path dataFilePath) throws NullException;
+	
+	protected void setMaxLength(VariablesMap variables, String variableName, String value) {
+		if ((variables.getVariable(variableName) != null)
+				&& value.length() > variables.getVariable(variableName).getMaxLengthData()) {
+			variables.getVariable(variableName).setMaxLengthData(value.length());
+		}
+	}
+
 
 }

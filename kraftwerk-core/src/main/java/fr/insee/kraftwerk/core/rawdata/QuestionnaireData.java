@@ -1,7 +1,10 @@
 package fr.insee.kraftwerk.core.rawdata;
 
-import fr.insee.kraftwerk.core.Constants;
 import org.apache.commons.lang3.tuple.Pair;
+
+import fr.insee.kraftwerk.core.Constants;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Object class to store data from a questionnaire.
@@ -9,19 +12,13 @@ import org.apache.commons.lang3.tuple.Pair;
  */
 public class QuestionnaireData {
 
+	@Getter
+	@Setter
     protected String identifier;
+	
+	@Getter
     protected GroupInstance answers = new GroupInstance(Constants.ROOT_GROUP_NAME, "");
 
-    public String getIdentifier() {
-        return identifier;
-    }
-    public void setIdentifier(String identifier) {
-        this.identifier = identifier;
-    }
-
-    public GroupInstance getAnswers() {
-        return answers;
-    }
     
     /**
      * Put the given value corresponding to the variable given in the data object.
