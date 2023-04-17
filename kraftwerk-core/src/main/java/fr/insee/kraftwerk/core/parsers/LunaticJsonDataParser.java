@@ -47,10 +47,9 @@ public class LunaticJsonDataParser extends DataParser {
 		questionnaireData.setIdentifier((String) jsonObject.get("id"));
 
 		// Survey answers
-		readCollected(jsonData, questionnaireData, data.getVariablesMap());
-		readExternal(jsonData,  questionnaireData, data.getVariablesMap());
-		readCalculated();
-
+		readCollected(jsonData, questionnaireData);
+		readExternal(jsonData,  questionnaireData);
+		//Calculated variables are not read, they are calculated throw the metadata description
 		data.addQuestionnaire(questionnaireData);
 
 		log.info("Successfully parsed Lunatic JSON answers file: {}", filePath);
@@ -58,12 +57,12 @@ public class LunaticJsonDataParser extends DataParser {
 	}
 
 
-	private void readCollected(JSONObject jsonData, QuestionnaireData questionnaireData, VariablesMap variables) {
+	private void readCollected(JSONObject jsonData, QuestionnaireData questionnaireData) {
 		readVariables(Constants.COLLECTED,jsonData, questionnaireData, data.getVariablesMap());
 	}
 	
 
-	private void readExternal(JSONObject jsonData, QuestionnaireData questionnaireData, VariablesMap variablesMap) {
+	private void readExternal(JSONObject jsonData, QuestionnaireData questionnaireData) {
 		readVariables(Constants.EXTERNAL,jsonData, questionnaireData, data.getVariablesMap());
 		
 	}
@@ -80,22 +79,16 @@ public class LunaticJsonDataParser extends DataParser {
 			if (variables.hasVariable(variableName)) {// Read only variables described in metadata
 				if (variableData.get(type) != null) {
 					Object value = variableData.get(type);
-					if (value instanceof String || value instanceof Number || value instanceof Boolean) { // Root
-																											// Variables
-						setMaxLength(variables, variableName, value.toString());
-						answers.putValue(variableName, value.toString());
-					} else if (value instanceof JSONArray valueArray) {// Group variables
+					if (value instanceof JSONArray valueArray) {// Group variables
 						// Get the selected subgroup
 						String groupName = variables.getVariable(variableName).getGroupName();
 						GroupData groupData = answers.getSubGroup(groupName);
 						// Add all children values to the variable in the subgroup
-						for (int j = 0; j < valueArray.size(); j++) {
-							String currentVal = valueArray.get(j).toString();
-							setMaxLength(variables, variableName, currentVal);
-							groupData.putValue(currentVal, variableName, j);
-						}
+						addAllVariablesInGroup(variables, variableName, valueArray, groupData);
+					}else { // Root																			// Variables
+						setMaxLength(variables, variableName, value.toString());
+						answers.putValue(variableName, value.toString());
 					} // else JSONObject ?
-
 				}
 			} else {
 				log.warn(String.format("WARNING: Variable %s not expected!", variableName));
@@ -104,10 +97,14 @@ public class LunaticJsonDataParser extends DataParser {
 		}
 	}
 
-
-	private void readCalculated() {
-		// TODO Auto-generated method stub
-
+	private void addAllVariablesInGroup(VariablesMap variables, String variableName, JSONArray valueArray,
+			GroupData groupData) {
+		for (int j = 0; j < valueArray.size(); j++) {
+			String currentVal = valueArray.get(j).toString();
+			setMaxLength(variables, variableName, currentVal);
+			groupData.putValue(currentVal, variableName, j);
+		}
 	}
+
 
 }
