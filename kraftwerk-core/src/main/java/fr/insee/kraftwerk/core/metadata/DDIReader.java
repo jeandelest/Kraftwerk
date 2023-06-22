@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import javax.xml.XMLConstants;
@@ -27,6 +28,9 @@ import lombok.extern.log4j.Log4j2;
 public class DDIReader {
 
 	// DDI should stay in KW and use DOM (not Jaxb)
+	  private DDIReader() {
+		    throw new IllegalStateException("Utility class");
+	 }
 
 	/**
 	 * This method apply the XSLT_STRUCTURED_VARIABLES transformation to the DDI,
@@ -43,18 +47,14 @@ public class DDIReader {
 
 		try {
 			// Path of the output 'variables.xml' temp file
-			File variablesFile = File.createTempFile("variables", ".xml");
+			File variablesFile = Files.createTempFile("variables", ".xml").toFile();
 			variablesFile.deleteOnExit();
 			Path variablesTempFilePath = variablesFile.toPath();
 			//
 			transformDDI(ddiUrl, variablesTempFilePath);
 
 			VariablesMap variablesMap = readVariables(variablesTempFilePath);
-			if (variablesFile.delete()){
-				log.debug("File {} deleted",variablesFile.toPath());
-			} else {
-				log.debug("Impossible to delete file {}",variablesFile.toPath());
-			}
+			Files.delete(variablesTempFilePath);
 			return variablesMap;
 		}
 
@@ -109,9 +109,7 @@ public class DDIReader {
 
 			try {
 				Node groupNode = groupElements.item(i);
-				if ("Group".equals(groupNode.getNodeName())) {
-
-					if (groupNode.getNodeType() == Node.ELEMENT_NODE) {
+				if (isElementNodeWithStringInName(groupNode, "Group")) {
 						// Get the group name
 						Element groupElement = (Element) groupNode;
 
@@ -130,7 +128,7 @@ public class DDIReader {
 
 						// Variables in the group
 						getVariablesInGroup(variablesMap, groupNode, group);
-					}
+					
 				}
 			} catch (NullPointerException e) {
 				log.error(String.format("Missing field in mandatory information for variable %s",
@@ -152,12 +150,15 @@ public class DDIReader {
 		return variablesMap;
 	}
 
+	private static boolean isElementNodeWithStringInName(Node groupNode, String expectedName) {
+		return expectedName.equals(groupNode.getNodeName()) && groupNode.getNodeType() == Node.ELEMENT_NODE;
+	}
+
 	private static void getVariablesInGroup(VariablesMap variablesMap, Node groupNode, Group group) {
 		NodeList variableNodes = groupNode.getChildNodes();
 		for (int j = 0; j < variableNodes.getLength(); j++) {
 			Node variableNode = variableNodes.item(j);
-			if ("Variable".equals(variableNode.getNodeName()) && // Add only Variable
-					variableNode.getNodeType() == Node.ELEMENT_NODE) {
+			if (isElementNodeWithStringInName(variableNode,"Variable")) {// Add only Variable
 				Element variableElement = (Element) variableNode;
 
 				// Variable name, type and size
@@ -182,8 +183,7 @@ public class DDIReader {
 					NodeList valueElements = valuesElement.getChildNodes();
 					for (int k = 0; k < valueElements.getLength(); k++) {
 						Node valueElement = valueElements.item(k);
-						if (valueElement.getNodeType() == Node.ELEMENT_NODE
-								&& "Value".equals(valueElement.getNodeName())) {
+						if (isElementNodeWithStringInName(valueElement, "Value")) {
 							variable.addModality(valueElement.getTextContent(),
 									((Element) valueElement).getAttribute("label"));
 

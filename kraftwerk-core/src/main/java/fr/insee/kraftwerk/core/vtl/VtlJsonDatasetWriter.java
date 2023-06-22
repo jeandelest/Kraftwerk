@@ -71,7 +71,7 @@ public class VtlJsonDatasetWriter {
 
 		// Write the temporary dataset file
 		try {
-			File datasetFile = File.createTempFile(datasetName, ".json");
+			File datasetFile = Files.createTempFile(datasetName, ".json").toFile();
 			datasetFile.deleteOnExit();
 			String tempPath = datasetFile.getAbsolutePath();
 			Files.write(Paths.get(tempPath), jsonVtlDataset.toJSONString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING);
