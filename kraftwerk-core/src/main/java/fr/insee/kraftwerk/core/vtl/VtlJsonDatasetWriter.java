@@ -31,6 +31,7 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 public class VtlJsonDatasetWriter {
 
+	private static final String STRING = "STRING";
 	private final SurveyRawData surveyData;
 	private final VariablesMap variablesMap;
 	private final String datasetName;
@@ -92,7 +93,7 @@ public class VtlJsonDatasetWriter {
 		// Root level identifier
 		JSONObject jsonVtlIdentifier = new JSONObject();
 		jsonVtlIdentifier.put("name", Constants.ROOT_IDENTIFIER_NAME);
-		jsonVtlIdentifier.put("type", "STRING");
+		jsonVtlIdentifier.put("type", STRING);
 		jsonVtlIdentifier.put("role", "IDENTIFIER");
 		dataStructure.add(jsonVtlIdentifier);
 		columnsMapping.put(Constants.ROOT_IDENTIFIER_NAME, variableNumber);
@@ -102,7 +103,7 @@ public class VtlJsonDatasetWriter {
 			// The group name is the identifier variable for the group
 			JSONObject jsonVtlGroupIdentifier = new JSONObject();
 			jsonVtlGroupIdentifier.put("name", groupName);
-			jsonVtlGroupIdentifier.put("type", "STRING");
+			jsonVtlGroupIdentifier.put("type", STRING);
 			jsonVtlGroupIdentifier.put("role", "IDENTIFIER");
 			dataStructure.add(jsonVtlGroupIdentifier);
 			columnsMapping.put(groupName, variableNumber);
@@ -207,7 +208,7 @@ public class VtlJsonDatasetWriter {
 	public static String convertToVtlType(VariableType variableType) {
 		if (variableType == null) {
 			log.debug("null variable type given to convertToVtlType method, this should NEVER happen!");
-			return "STRING";
+			return STRING;
 		}
 		return variableType.getVtlType();
 	}
