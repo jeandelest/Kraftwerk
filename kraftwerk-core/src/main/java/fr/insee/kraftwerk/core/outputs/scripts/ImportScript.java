@@ -52,7 +52,7 @@ public abstract class ImportScript {
 					String newLengthString = variable.getSasFormat();
 
 					// We already got the variable, so we check to see if the lengths are different -> take the maximum one then
-					if (newLengthString == null && !variableName.toUpperCase().contains(Constants.FILTER_RESULT_PREFIX)) {
+					if (newLengthString == null && !isFilterResultVariable(variableName)) {
 						if (result.containsKey(variableName)) {
 							result.replace(variableName, new Variable(variableName,
 									result.get(variableName).getGroup(), VariableType.STRING, "255"));
@@ -75,7 +75,7 @@ public abstract class ImportScript {
 							}
 						} else {
 							// Filter results are boolean, value "true" or "false"
-							if (variableName.toUpperCase().contains(Constants.FILTER_RESULT_PREFIX)) {
+							if (isFilterResultVariable(variableName)) {
 								result.put(variableName, new Variable(variableName,
 										variablesMap.getGroup(Constants.ROOT_GROUP_NAME), VariableType.BOOLEAN, "1"));
 							} else {
@@ -96,6 +96,10 @@ public abstract class ImportScript {
 
 		}
 		return result;
+	}
+
+	private static boolean isFilterResultVariable(String variableName) {
+		return variableName.toUpperCase().contains(Constants.FILTER_RESULT_PREFIX);
 	}
 
 	/** Return the variable name without the group in the prefixes. */

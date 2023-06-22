@@ -14,9 +14,9 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 public abstract class ReportingDataParser {
 
-	public int maxStates = 0;
+	private int maxStates = 0;
 
-	public int maxAttempts = 0;
+	private int maxAttempts = 0;
 
 	protected void integrateReportingDataIntoUE(SurveyRawData surveyRawData, ReportingData reportingData) {
 		this.maxStates = countMaxStates(reportingData);
@@ -124,7 +124,7 @@ public abstract class ReportingDataParser {
 					questionnaire.getAnswers().putValue(Constants.SURVEY_DATE_DAY_NAME,
 							Integer.toString(calendar.get(5)));
 					questionnaire.getAnswers().putValue(Constants.SURVEY_DATE_MONTH_NAME,
-							String.format("%02d", new Object[] { Integer.valueOf(calendar.get(2) + 1) }));
+							String.format("%02d", Integer.valueOf(calendar.get(2) + 1)));
 					questionnaire.getAnswers().putValue(Constants.SURVEY_DATE_YEAR_NAME,
 							Integer.toString(calendar.get(1)));
 				}

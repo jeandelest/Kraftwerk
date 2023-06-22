@@ -2,7 +2,6 @@ package fr.insee.kraftwerk.core.vtl;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javax.script.SimpleBindings;
 
@@ -51,9 +50,9 @@ public class VtlBindings extends SimpleBindings {
             return dataset.getDataStructure().values().stream()
                     .filter(component -> component.getRole() == role)
                     .map(Structured.Component::getName)
-                    .collect(Collectors.toList());
+                    .toList();
         } else {
-            return null;
+            return new ArrayList<>();
         }
 
     }
@@ -71,22 +70,21 @@ public class VtlBindings extends SimpleBindings {
      * @return
      */
     public String getMeasureType(String datasetName, String measure){
-        String type="";
         Class<?> measureClass = this.getDataset(datasetName).getDataStructure().get(measure).getType();
         try {
             if (measureClass == Class.forName("java.lang.Long")){
-                type="integer";
-            };
+               return "integer";
+            }
             if (measureClass == Class.forName("java.lang.Double")){
-                type="number";
-            };
+            	return "number";
+            }
             if (measureClass == Class.forName("java.lang.Boolean")){
-                type="boolean";
-            };
+            	return "boolean";
+            }
             if (measureClass == Class.forName("java.lang.String")){
-                type="string";
-            };
-            return type;
+            	return "string";
+            }
+            return "";
         } catch (ClassNotFoundException e) {
             log.error("Class not recognized");
             return "";
@@ -125,9 +123,10 @@ public class VtlBindings extends SimpleBindings {
         Dataset ds = this.getDataset(bindingName);
         Structured.DataStructure dataStructure = ds.getDataStructure();
 
-        for(String fullyQualifiedName : dataStructure.keySet()){
+        for(Entry<String,Structured.Component> dataEntry : dataStructure.entrySet()){
 
-            Structured.Component datasetVariable = dataStructure.get(fullyQualifiedName);
+        	String fullyQualifiedName = dataEntry.getKey();
+            Structured.Component datasetVariable = dataEntry.getValue();
 
             switch (datasetVariable.getRole()){
 

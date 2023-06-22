@@ -244,13 +244,13 @@ public class StepByStepService extends KraftwerkService {
 	}
 
 
-	
+	@Override
 	@PutMapping(value = "/archive")
 	@Operation(operationId = "archive", summary = "${summary.archive}", description = "${description.archive}")
 	public ResponseEntity<String> archive(
 			@Parameter(description = "${param.inDirectory}", required = true, example = INDIRECTORY_EXAMPLE) @RequestBody  String inDirectoryParam) 
 			{
-		return archive(inDirectoryParam);
+		return super.archive(inDirectoryParam);
 
 	}
 

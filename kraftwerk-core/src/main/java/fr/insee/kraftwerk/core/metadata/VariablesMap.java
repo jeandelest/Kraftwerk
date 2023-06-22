@@ -94,8 +94,8 @@ public class VariablesMap {
     public List<String> getSubGroupNames() {
         return groups.keySet()
                 .stream().filter(name -> ! groups.get(name).isRoot())
-                .collect(Collectors.toList());
-    }
+                .toList();
+        }
     
     /** Return the number of groups in the map (including the root group). */
     public int getGroupsCount() {
@@ -195,15 +195,15 @@ public class VariablesMap {
     public boolean isInQuestionGrid(String questionName){
         return variables.values().stream()
                 .filter(Variable::isInQuestionGrid)
-                .anyMatch(var -> // (FILTER_RESULT variables are upper case)
-                        (var.getQuestionItemName().equals(questionName)
-                                || var.getQuestionItemName().equalsIgnoreCase(questionName)));
+                .anyMatch(currentVar -> // (FILTER_RESULT variables are upper case)
+                        (currentVar.getQuestionItemName().equals(questionName)
+                                || currentVar.getQuestionItemName().equalsIgnoreCase(questionName)));
     }
 
     public Group getQuestionGridGroup(String questionName) {
         return variables.values().stream()
                 .filter(Variable::isInQuestionGrid)
-                .filter(var -> var.getQuestionItemName().equals(questionName))
+                .filter(currentVar -> currentVar.getQuestionItemName().equals(questionName))
                 .map(Variable::getGroup)
                 .findFirst().orElse(null);
     }
@@ -221,7 +221,7 @@ public class VariablesMap {
 	public boolean hasUcqMcq(String variableName) {
         Variable variable = variables.get(variableName);
         if (variable != null) {
-            return variable instanceof UcqVariable && !((UcqVariable) variable).getQuestionItemName().isEmpty();
+            return variable instanceof UcqVariable ucqVariable && !(ucqVariable.getQuestionItemName().isEmpty());
         }
         return false;
     }
@@ -230,7 +230,7 @@ public class VariablesMap {
         return variables.values().stream()
                 .filter(UcqVariable.class::isInstance)
                 .map(UcqVariable.class::cast)
-                .collect(Collectors.toList());
+                .toList();
     }
 	/** Return the list of all names of UCQ variables registered in the map. */
     public List<String> getUcqVariablesNames() {
@@ -239,8 +239,8 @@ public class VariablesMap {
                 .map(ucqVariable -> ((UcqVariable) ucqVariable).getQuestionItemName())
                 .filter(Objects::nonNull)
                 .distinct()
-                .collect(Collectors.toList());
-    }
+                .toList();  
+        }
 	/** Return the list of all names of MCQ variables registered in the map. */
     public List<String> getMcqVariablesNames() {
         return variables.values().stream()
@@ -248,13 +248,13 @@ public class VariablesMap {
                 .map(mcqVariable -> ((McqVariable) mcqVariable).getQuestionItemName())
                 .filter(Objects::nonNull)
                 .distinct()
-                .collect(Collectors.toList());
-    }
+                .toList();  
+        }
     /** Return the list of all paper UCQ indicators registered in the map. */
     public List<PaperUcq> getPaperUcq() {
         return variables.values().stream()
                 .filter(PaperUcq.class::isInstance)
                 .map(PaperUcq.class::cast)
-                .collect(Collectors.toList());
-    }
+                .toList();
+        }
 }

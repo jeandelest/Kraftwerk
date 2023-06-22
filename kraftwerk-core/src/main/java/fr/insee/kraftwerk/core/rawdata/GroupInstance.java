@@ -1,6 +1,8 @@
 package fr.insee.kraftwerk.core.rawdata;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import fr.insee.kraftwerk.core.Constants;
 
@@ -53,11 +55,6 @@ public class GroupInstance {
 		return values.keySet();
 	}
 
-	@Deprecated // use getVariableNames
-	public LinkedHashMap<String, String> getValues() {
-		return values;
-	}
-
 	public void putValue(String variableName, String value) {
 		values.put(variableName, value);
 	}
@@ -80,16 +77,6 @@ public class GroupInstance {
 
 	public Set<String> getSubGroupNames() {
 		return new LinkedHashSet<>(subGroups.keySet());
-	}
-
-	@Deprecated // use getSubGroupNames instead
-	public LinkedHashMap<String, GroupData> getSubGroups() {
-		return subGroups;
-	}
-
-	@Deprecated // use getSubGroupInstead
-	public void putSubGroup(String groupName, GroupData subGroup) {
-		subGroups.put(groupName, subGroup);
 	}
 
 }
