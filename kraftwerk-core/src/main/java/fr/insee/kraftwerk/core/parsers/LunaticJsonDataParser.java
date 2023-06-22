@@ -12,9 +12,9 @@ import fr.insee.kraftwerk.core.rawdata.GroupData;
 import fr.insee.kraftwerk.core.rawdata.GroupInstance;
 import fr.insee.kraftwerk.core.rawdata.QuestionnaireData;
 import fr.insee.kraftwerk.core.rawdata.SurveyRawData;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 public class LunaticJsonDataParser extends DataParser {
 
 	/**
@@ -44,7 +44,9 @@ public class LunaticJsonDataParser extends DataParser {
 		QuestionnaireData questionnaireData = new QuestionnaireData();
 
 		// Root identifier
-		questionnaireData.setIdentifier((String) jsonObject.get("id"));
+		String identifier = (String) jsonObject.get("id");
+		questionnaireData.setIdentifier(identifier);
+		data.getIdSurveyUnits().add(identifier);
 
 		// Survey answers
 		readCollected(jsonData, questionnaireData);

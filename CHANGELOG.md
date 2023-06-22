@@ -1,16 +1,47 @@
 # Changelog
 
-
-## 1.3.0 - Not released yet
+## Not released yet
 
 ### Added
-- 
+
+### Changed
+
+### Fixed
+
+## 1.3.3 - [2023-06-13]
+
+### Fixed
+
+- Paradata : fix the method for calculating sessions time
+- Exclude boolean variables from length errors
+
+## 1.3.2 - [2023-05-30]
+
+### Fixed
+- Security issue by updating Springboot
+
+## 1.3.1 - [2023-05-02]
+
+### Changed
+- Read paradata file by file (survey unit by surveyunit based on filename)
+- Remove SLF4J and use Log4j2 instead
+
+### Fixed
+- Security issue
+
+## 1.3.0 - [2023-04-19]
+
+### Added
+- Warning when variable length is not compatible with associated metadata (error + SAS script)
+- Endpoint to process data file by file
 
 ### Changed
 - Remove XOM to read DDI. DOM is used
 
 ### Fixed
 - Read external variables in subgroups
+- Fix format for numeric variables from paradata
+- Fix memory error with temporary Json files
 
 ## 1.2.1 - [2023-03-10]
 
