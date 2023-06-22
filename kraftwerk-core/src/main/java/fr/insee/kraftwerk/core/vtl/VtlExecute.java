@@ -1,9 +1,9 @@
 package fr.insee.kraftwerk.core.vtl;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -66,12 +66,11 @@ public class VtlExecute {
         putVtlDataset(tempDatasetPath, bindingName, bindings);
         // Delete temp file
         Path tempDataset = Paths.get(tempDatasetPath);
-        File fileTempDataset = tempDataset.toFile();
-        if (fileTempDataset.delete()){
-            log.debug("File {} deleted",tempDatasetPath);
-        } else {
-            log.debug("Impossible to delete file {}",tempDatasetPath);
-        }
+        try {
+			Files.delete(tempDataset);
+		} catch (IOException e) {
+			log.debug("Impossible to delete file {}",tempDataset.toFile());
+		}
     }
 
 
